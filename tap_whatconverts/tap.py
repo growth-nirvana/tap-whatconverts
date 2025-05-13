@@ -35,16 +35,16 @@ class TapWhatConverts(Tap):
         th.Property(
             "profile_id",
             th.IntegerType,
-            required=True,
+            required=False,
             title="Profile ID",
-            description="The profile id to authenticate against the API service",
+            description="Optional: The profile id to authenticate against the API service. If not provided, all profiles will be synced.",
         ),
         th.Property(
             "account_id",
             th.IntegerType,
-            required=True,
+            required=False,
             title="Account ID",
-            description="The account id to authenticate against the API service",
+            description="Optional: The account id to authenticate against the API service. If not provided, all accounts will be synced.",
         ),
         th.Property(
             "start_date",
@@ -60,9 +60,11 @@ class TapWhatConverts(Tap):
             A list of discovered streams.
         """
         return [
+            streams.AccountsStream(self),
+            streams.ProfilesStream(self),
             streams.LeadsStream(self),
-            # streams.PhoneTrackingStream(self),
-            # streams.WebFormTrackingStream(self),
+            streams.PhoneTrackingStream(self),
+            streams.WebFormTrackingStream(self),
         ]
 
 

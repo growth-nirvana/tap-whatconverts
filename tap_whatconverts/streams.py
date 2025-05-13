@@ -8,6 +8,85 @@ from singer_sdk import typing as th
 from tap_whatconverts.client import WhatConvertsStream
 
 
+class AccountsStream(WhatConvertsStream):
+    """Define accounts stream."""
+
+    name = "whatconverts_accounts"
+    path = "/accounts"
+    primary_keys = ["account_id"]
+    replication_key = None
+    records_jsonpath = "$.accounts[*]"
+    schema = th.PropertiesList(
+        th.Property("account_id", th.IntegerType),
+        th.Property("account_name", th.StringType),
+        th.Property("account_status", th.StringType),
+        th.Property("account_type", th.StringType),
+        th.Property("account_created", th.DateTimeType),
+        th.Property("account_updated", th.DateTimeType),
+    ).to_dict()
+
+
+class ProfilesStream(WhatConvertsStream):
+    """Define profiles stream."""
+
+    name = "whatconverts_profiles"
+    path = "/accounts/{account_id}/profiles"
+    primary_keys = ["profile_id"]
+    replication_key = None
+    records_jsonpath = "$.profiles[*]"
+    schema = th.PropertiesList(
+        th.Property("profile_id", th.IntegerType),
+        th.Property("account_id", th.IntegerType),
+        th.Property("profile_name", th.StringType),
+        th.Property("profile_status", th.StringType),
+        th.Property("profile_created", th.DateTimeType),
+        th.Property("profile_updated", th.DateTimeType),
+    ).to_dict()
+
+    def get_url_params(
+        self,
+        context: Context | None,
+        next_page_token: t.Any | None,
+    ) -> dict[str, t.Any]:
+        """Return a dictionary of values to be used in URL parameterization.
+
+        Args:
+            context: The stream context.
+            next_page_token: The next page index or value.
+
+        Returns:
+            A dictionary of URL query parameters.
+        """
+        params = {}
+        if next_page_token:
+            params["page"] = next_page_token
+        return params
+
+    def get_records(self, context: Context | None) -> t.Iterable[dict[str, t.Any]]:
+        """Get records from the stream.
+
+        Args:
+            context: Stream partition or context dictionary.
+
+        Yields:
+            One item per (possibly processed) record in the API.
+        """
+        # First get all accounts
+        accounts_stream = AccountsStream(self._tap)
+        for account in accounts_stream.get_records(context):
+            account_id = account["account_id"]
+            
+            # Update the path with the current account_id
+            self.path = f"/accounts/{account_id}/profiles"
+            
+            # Get profiles for this account
+            for profile in super().get_records(context):
+                yield {
+                    **profile,
+                    "account_id": account_id,
+                }
+
+
 class LeadsStream(WhatConvertsStream):
     """Define custom stream."""
 

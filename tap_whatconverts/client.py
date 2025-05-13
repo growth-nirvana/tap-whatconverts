@@ -54,18 +54,18 @@ class WhatConvertsStream(RESTStream):
         Returns:
             A dictionary of URL query parameters.
         """
-        account_id = self.config["account_id"]
-        profile_id = self.config["profile_id"]
-        start_date = self.config["start_date"]
-
         params = {
             "leads_per_page": 250,
-            "account_id": account_id,
-            "profile_id": profile_id,
         }
 
-        if(self.name == "whatconverts_leads"):
-            params["start_date"] = start_date
+        # Only add account_id and profile_id if they are provided in config
+        if "account_id" in self.config:
+            params["account_id"] = self.config["account_id"]
+        if "profile_id" in self.config:
+            params["profile_id"] = self.config["profile_id"]
+
+        if self.name == "whatconverts_leads" and "start_date" in self.config:
+            params["start_date"] = self.config["start_date"]
 
         if next_page_token:
             params["page"] = next_page_token
@@ -81,13 +81,28 @@ class WhatConvertsStream(RESTStream):
         Yields:
             Each record from the source.
         """
+        # Only add profile_id to records if it's provided in config
+        if "profile_id" in self.config:
+            yield from (
+                {
+                    **record,
+                    "profile_id": self.config["profile_id"],
+                }
+                for record in extract_jsonpath(self.records_jsonpath, input=response.json())
+            )
+        else:
+            yield from extract_jsonpath(self.records_jsonpath, input=response.json())
 
-        profile_id = self.config["profile_id"]
+    def get_url(self, context: Context | None) -> str:
+        """Get URL for the stream.
 
-        yield from (
-            {
-                **record,
-                "profile_id": profile_id,
-            }
-            for record in extract_jsonpath(self.records_jsonpath, input=response.json())
-        )
+        Args:
+            context: Stream partition or context dictionary.
+
+        Returns:
+            URL for the stream.
+        """
+        # For profiles stream, the path is dynamic and set in the stream class
+        if self.name == "whatconverts_profiles":
+            return f"{self.url_base}{self.path}"
+        return super().get_url(context)
