@@ -23,6 +23,7 @@ class AccountsStream(WhatConvertsStream):
         th.Property("account_type", th.StringType),
         th.Property("account_created", th.DateTimeType),
         th.Property("account_updated", th.DateTimeType),
+        th.Property("date_created", th.DateTimeType),
     ).to_dict()
 
 
@@ -41,6 +42,7 @@ class ProfilesStream(WhatConvertsStream):
         th.Property("profile_status", th.StringType),
         th.Property("profile_created", th.DateTimeType),
         th.Property("profile_updated", th.DateTimeType),
+        th.Property("date_created", th.DateTimeType),
     ).to_dict()
 
     def get_url_params(
@@ -167,6 +169,16 @@ class LeadsStream(WhatConvertsStream):
         th.Property("play_voicemail", th.StringType),
         th.Property("call_transcription", th.StringType),
         th.Property("voicemail_transcription", th.StringType),
+        th.Property("account", th.StringType),
+        th.Property("lead_analysis", th.StringType),
+        th.Property("last_updated", th.DateTimeType),
+        th.Property("additional_fields", th.StringType),
+        th.Property("city", th.StringType),
+        th.Property("country", th.StringType),
+        th.Property("state", th.StringType),
+        th.Property("zip", th.StringType),
+        th.Property("form_name", th.StringType),
+        th.Property("google_analytics_session_id", th.StringType),
     ).to_dict()
 
 
@@ -198,6 +210,9 @@ class PhoneTrackingStream(WhatConvertsStream):
         th.Property("account_id", th.IntegerType),
         th.Property("profile_id", th.IntegerType),
         th.Property("profile", th.StringType),
+        th.Property("campaign", th.StringType),
+        th.Property("content", th.StringType),
+        th.Property("keyword", th.StringType),
     ).to_dict()
 
 

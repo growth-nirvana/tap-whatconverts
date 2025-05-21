@@ -5,6 +5,8 @@ from __future__ import annotations
 import decimal
 import typing as t
 from importlib import resources
+import logging
+from datetime import datetime
 
 from requests.auth import HTTPBasicAuth
 from singer_sdk.helpers.jsonpath import extract_jsonpath
@@ -15,6 +17,7 @@ if t.TYPE_CHECKING:
     import requests
     from singer_sdk.helpers.types import Context
 
+logger = logging.getLogger(__name__)
 
 class WhatConvertsStream(RESTStream):
     """WhatConverts stream class."""
@@ -40,6 +43,37 @@ class WhatConvertsStream(RESTStream):
             password=secret_key,
         )
 
+    def get_next_page_token(
+        self,
+        response: requests.Response,
+        previous_token: t.Any | None,
+    ) -> t.Any | None:
+        """Return a token for identifying next page or None if no more pages.
+
+        Args:
+            response: The HTTP ``requests.Response`` object.
+            previous_token: The previous page token value.
+
+        Returns:
+            The next pagination token.
+        """
+        if self.name == "whatconverts_leads":
+            # Get total leads count from response
+            response_json = response.json()
+            total_pages = response_json.get("total_pages", 0)
+            current_page = previous_token or 1
+            
+            # Get the leads from this page
+            records = list(extract_jsonpath(self.records_jsonpath, input=response_json))
+            if not records:
+                return None
+                
+            # If we have more pages to fetch, return next page number
+            if current_page < total_pages:
+                return current_page + 1
+            return None
+        return None
+
     def get_url_params(
         self,
         context: Context | None,
@@ -56,6 +90,7 @@ class WhatConvertsStream(RESTStream):
         """
         params = {
             "leads_per_page": 250,
+            "order": "asc",  # Get oldest leads first
         }
 
         # Only add account_id and profile_id if they are provided in config
@@ -65,10 +100,23 @@ class WhatConvertsStream(RESTStream):
             params["profile_id"] = self.config["profile_id"]
 
         if self.name == "whatconverts_leads" and "start_date" in self.config:
-            params["start_date"] = self.config["start_date"]
+            start_date = self.config["start_date"]
+            
+            # Format the date as YYYY-MM-DD
+            if isinstance(start_date, str):
+                formatted_date = start_date.split("T")[0]
+            else:
+                formatted_date = start_date.strftime("%Y-%m-%d")
+            
+            # Add start_date parameter
+            params["start_date"] = formatted_date
+            
+            # Add end_date as current date to ensure we get all leads up to now
+            end_date = datetime.utcnow().strftime("%Y-%m-%d")
+            params["end_date"] = end_date
 
         if next_page_token:
-            params["page"] = next_page_token
+            params["page_number"] = next_page_token
 
         return params
 
